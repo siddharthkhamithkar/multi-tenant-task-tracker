@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,16 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
   const [apiError, setApiError] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    // Check if user was redirected from registration
+    if (searchParams.get('registered') === 'true') {
+      setSuccessMessage("Account created successfully! Please sign in with your credentials.")
+    }
+  }, [searchParams])
 
   const validateForm = () => {
     const newErrors = {}
@@ -93,6 +102,12 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {successMessage && (
+              <Alert>
+                <AlertDescription>{successMessage}</AlertDescription>
+              </Alert>
+            )}
+            
             {apiError && (
               <Alert variant="destructive">
                 <AlertDescription>{apiError}</AlertDescription>

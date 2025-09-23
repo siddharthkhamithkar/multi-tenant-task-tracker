@@ -57,10 +57,9 @@ export default function RegisterPage() {
 
     try {
       const response = await api.post("/auth/register", formData)
-      const { token } = response.data
-
-      saveToken(token)
-      router.push("/organizations")
+      
+      // Registration successful - redirect to login page with success message
+      router.push("/login?registered=true")
     } catch (error) {
       setApiError(error.response?.data?.message || "Registration failed. Please try again.")
     } finally {

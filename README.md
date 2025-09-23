@@ -62,7 +62,7 @@ A comprehensive task management system built with Next.js (frontend) and Express
 
    The frontend will run on `http://localhost:3001`
 
-## 🏢 Multi-Tenancy Architecture
+## Multi-Tenancy Architecture
 
 ### How Multi-Tenancy Works
 

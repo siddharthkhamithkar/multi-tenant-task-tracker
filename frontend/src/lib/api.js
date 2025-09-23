@@ -2,7 +2,7 @@ import axios from "axios"
 
 // Create axios instance with configurable base URL
 const api = axios.create({
-  baseURL: "http://localhost:3001/api",
+  baseURL: "http://api.wolfslair.in:3001/api",
   headers: {
     "Content-Type": "application/json",
   },

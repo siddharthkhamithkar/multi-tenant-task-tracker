@@ -19,7 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Building2, Plus, ArrowLeft, CheckCircle2, Clock, AlertCircle, User, LogOut } from "lucide-react"
+import { Building2, Plus, ArrowLeft, CheckCircle2, Clock, AlertCircle, User, LogOut, Activity } from "lucide-react"
 import AuthGuard from "@/src/components/auth-guard"
 import api from "@/src/lib/api"
 import { removeToken, getUserFromToken } from "@/src/lib/auth"
@@ -54,6 +54,8 @@ export default function ProjectsPage() {
   const [isCreatingTask, setIsCreatingTask] = useState(false)
   const [orgMembers, setOrgMembers] = useState([])
   const [orgId, setOrgId] = useState(null)
+  const [activities, setActivities] = useState([])
+  const [isLoadingActivities, setIsLoadingActivities] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -70,6 +72,7 @@ export default function ProjectsPage() {
 
     fetchOrganizationData(storedOrgId)
     fetchProjects(storedOrgId)
+    fetchActivities(storedOrgId)
   }, [router])
 
   useEffect(() => {
@@ -77,6 +80,12 @@ export default function ProjectsPage() {
       fetchTasks(selectedProject.id)
     }
   }, [selectedProject])
+
+  useEffect(() => {
+    if (orgId) {
+      fetchActivities(orgId)
+    }
+  }, [orgId])
 
   const fetchOrganizationData = async (orgId) => {
     try {
@@ -126,6 +135,18 @@ export default function ProjectsPage() {
     }
   }
 
+  const fetchActivities = async (orgId) => {
+    setIsLoadingActivities(true)
+    try {
+      const response = await api.get(`/activity/${orgId}`)
+      setActivities(response.data.activity || [])
+    } catch (error) {
+      setError("Failed to load activities")
+    } finally {
+      setIsLoadingActivities(false)
+    }
+  }
+
   const handleCreateTask = async () => {
     if (!newTask.title.trim() || !selectedProject) return
 
@@ -138,6 +159,7 @@ export default function ProjectsPage() {
       })
       setNewTask({ title: "", assignedTo: "", priority: "medium" })
       fetchTasks(selectedProject.id)
+      if (orgId) fetchActivities(orgId)
     } catch (error) {
       setError(error.response?.data?.message || "Failed to create task")
     } finally {
@@ -149,6 +171,7 @@ export default function ProjectsPage() {
     try {
       await api.patch(`/tasks/${taskId}`, { status: newStatus })
       fetchTasks(selectedProject.id)
+      if (orgId) fetchActivities(orgId)
     } catch (error) {
       if (error.response?.status === 403) {
         setError("This task doesn't belong to you")
@@ -162,6 +185,7 @@ export default function ProjectsPage() {
     try {
       await api.delete(`/tasks/${taskId}`)
       fetchTasks(selectedProject.id)
+      if (orgId) fetchActivities(orgId)
     } catch (error) {
       if (error.response?.status === 403) {
         setError("This task doesn't belong to you")
@@ -178,6 +202,7 @@ export default function ProjectsPage() {
       await api.post(`/projects`, { orgId: Number(orgId), name: newProjectName })
       setNewProjectName("")
       fetchProjects(orgId)
+      fetchActivities(orgId)
     } catch (error) {
       setError(error.response?.data?.message || "Failed to create project")
     } finally {
@@ -528,6 +553,64 @@ export default function ProjectsPage() {
                 </Card>
               )}
             </div>
+          </div>
+
+          {/* Recent Activity Section */}
+          <div className="mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Recent Activity
+                </CardTitle>
+                <CardDescription>
+                  Latest activities in {organization?.name || "this organization"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingActivities ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-muted rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : activities.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No recent activity</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Activity will appear here as team members work on tasks
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {activities.slice(0, 10).map((activity) => (
+                      <div key={activity.id} className="flex items-start gap-3 pb-4 border-b border-border last:border-b-0 last:pb-0">
+                        <div className="flex-shrink-0 w-2 h-2 bg-primary rounded-full mt-2"></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {activity.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(activity.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {activities.length > 10 && (
+                      <div className="pt-4 border-t border-border">
+                        <p className="text-xs text-muted-foreground text-center">
+                          Showing 10 most recent activities
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </main>
       </div>

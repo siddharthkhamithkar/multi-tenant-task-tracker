@@ -256,13 +256,9 @@ export default function ProjectsPage() {
       return 'Invalid date';
     }
     
-    // Get the user's timezone offset in minutes
-    const timezoneOffset = new Date().getTimezoneOffset();
-    
-    // Apply the timezone offset to get local time
-    const localDate = new Date(utcDate.getTime() - (timezoneOffset * 60 * 1000));
-    
-    return localDate.toLocaleString(undefined, {
+    // JavaScript's Date constructor with 'Z' automatically converts UTC to local time
+    // No need to manually apply timezone offset
+    return utcDate.toLocaleString(undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -275,7 +271,7 @@ export default function ProjectsPage() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-background">
-        {/* Display orgId and projectCode at the top */}
+        {/* Display orgId and projectCode at the top
         <div className="container mx-auto px-4 py-2 flex gap-8 items-center">
           <div className="text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">Org ID:</span> {orgId || "N/A"}
@@ -283,7 +279,7 @@ export default function ProjectsPage() {
           <div className="text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">Project Code:</span> {selectedProject?.code || selectedProject?.id || "N/A"}
           </div>
-        </div>
+        </div> */}
         <header className="border-b border-border bg-card">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -293,8 +289,8 @@ export default function ProjectsPage() {
               </Button>
               <Building2 className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-2xl font-semibold text-foreground">{organization?.name || "Loading..."}</h1>
-                <p className="text-sm text-muted-foreground">Project Management</p>
+                <h1 className="text-2xl font-semibold text-foreground">{`${organization?.name}` || "Loading..."}</h1>
+                <p className="text-sm text-muted-foreground">(Organization ID: {orgId})</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -384,6 +380,7 @@ export default function ProjectsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-2xl font-semibold text-foreground">{selectedProject.name}</h2>
+                      <p className="text-sm text-muted-foreground">(Project ID: {selectedProject.id})</p>
                     </div>
                     {canCreateTasks && (
                       <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
@@ -459,7 +456,6 @@ export default function ProjectsPage() {
                   <Tabs defaultValue="board" className="w-full">
                     <TabsList>
                       <TabsTrigger value="board">Board View</TabsTrigger>
-                      <TabsTrigger value="list">List View</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="board" className="space-y-4">
@@ -525,64 +521,6 @@ export default function ProjectsPage() {
                           )
                         })}
                       </div>
-                    </TabsContent>
-
-                    <TabsContent value="list" className="space-y-4">
-                      <Card>
-                        <CardContent className="p-0">
-                          <div className="divide-y divide-border">
-                            {tasks.map((task) => (
-                              <div key={task.id} className="p-4 flex items-center justify-between">
-                                <div className="flex-1">
-                                  <h4 className="font-medium">{task.title}</h4>
-                                  <div className="flex items-center gap-4 mt-2">
-                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                      <User className="h-3 w-3" />
-                                      {task.assignedToName || "Unassigned"}
-                                    </span>
-                                    <Badge variant="outline" className="text-xs">
-                                      {task.priority}
-                                    </Badge>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <Badge className={statusColors[task.status]}>{task.status.replace("-", " ")}</Badge>
-                                  {canUpdateTasks(task) && (
-                                    <div className="flex gap-2 items-center">
-                                      <Select
-                                        value={task.status}
-                                        onValueChange={(value) => handleUpdateTaskStatus(task.id, value)}
-                                      >
-                                        <SelectTrigger className="w-32">
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="pending">Pending</SelectItem>
-                                          <SelectItem value="in-progress">In Progress</SelectItem>
-                                          <SelectItem value="completed">Completed</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                      <Button variant="destructive" size="sm" onClick={() => handleDeleteTask(task.id)}>
-                                        Delete
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                            {tasks.length === 0 && (
-                              <div className="p-8 text-center">
-                                <p className="text-muted-foreground">No tasks in this project yet.</p>
-                                {canCreateTasks && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    Create your first task to get started.
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
                     </TabsContent>
                   </Tabs>
                 </div>

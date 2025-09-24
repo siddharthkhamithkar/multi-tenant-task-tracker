@@ -56,6 +56,8 @@ export default function ProjectsPage() {
   const [orgId, setOrgId] = useState(null)
   const [activities, setActivities] = useState([])
   const [isLoadingActivities, setIsLoadingActivities] = useState(false)
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false)
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -78,8 +80,9 @@ export default function ProjectsPage() {
   useEffect(() => {
     if (selectedProject) {
       fetchTasks(selectedProject.id)
+      if (orgId) fetchActivities(orgId, selectedProject.id)
     }
-  }, [selectedProject])
+  }, [selectedProject, orgId])
 
   useEffect(() => {
     if (orgId) {
@@ -135,10 +138,11 @@ export default function ProjectsPage() {
     }
   }
 
-  const fetchActivities = async (orgId) => {
+  const fetchActivities = async (orgId, projectId = null) => {
     setIsLoadingActivities(true)
     try {
-      const response = await api.get(`/activity/${orgId}`)
+      const endpoint = projectId ? `/activity/project/${projectId}` : `/activity/${orgId}`;
+      const response = await api.get(endpoint)
       setActivities(response.data.activity || [])
     } catch (error) {
       setError("Failed to load activities")
@@ -159,7 +163,8 @@ export default function ProjectsPage() {
       })
       setNewTask({ title: "", assignedTo: "", priority: "medium" })
       fetchTasks(selectedProject.id)
-      if (orgId) fetchActivities(orgId)
+      if (orgId) fetchActivities(orgId, selectedProject.id)
+      setIsTaskDialogOpen(false) // Close the dialog after successful creation
     } catch (error) {
       setError(error.response?.data?.message || "Failed to create task")
     } finally {
@@ -171,7 +176,7 @@ export default function ProjectsPage() {
     try {
       await api.patch(`/tasks/${taskId}`, { status: newStatus })
       fetchTasks(selectedProject.id)
-      if (orgId) fetchActivities(orgId)
+      if (orgId && selectedProject) fetchActivities(orgId, selectedProject.id)
     } catch (error) {
       if (error.response?.status === 403) {
         setError("This task doesn't belong to you")
@@ -185,7 +190,7 @@ export default function ProjectsPage() {
     try {
       await api.delete(`/tasks/${taskId}`)
       fetchTasks(selectedProject.id)
-      if (orgId) fetchActivities(orgId)
+      if (orgId && selectedProject) fetchActivities(orgId, selectedProject.id)
     } catch (error) {
       if (error.response?.status === 403) {
         setError("This task doesn't belong to you")
@@ -203,6 +208,7 @@ export default function ProjectsPage() {
       setNewProjectName("")
       fetchProjects(orgId)
       fetchActivities(orgId)
+      setIsProjectDialogOpen(false) // Close the dialog after successful creation
     } catch (error) {
       setError(error.response?.data?.message || "Failed to create project")
     } finally {
@@ -226,6 +232,39 @@ export default function ProjectsPage() {
   }
 
   // Use tasks array directly from API response
+
+  const formatLocalTime = (utcTimestamp) => {
+    // Handle different timestamp formats that might come from PostgreSQL
+    let utcDate;
+    
+    if (typeof utcTimestamp === 'string') {
+      // If it doesn't end with 'Z', append it to ensure it's treated as UTC
+      const timestamp = utcTimestamp.endsWith('Z') ? utcTimestamp : utcTimestamp + 'Z';
+      utcDate = new Date(timestamp);
+    } else {
+      utcDate = new Date(utcTimestamp);
+    }
+    
+    // Check if date is valid
+    if (isNaN(utcDate.getTime())) {
+      return 'Invalid date';
+    }
+    
+    // Get the user's timezone offset in minutes
+    const timezoneOffset = new Date().getTimezoneOffset();
+    
+    // Apply the timezone offset to get local time
+    const localDate = new Date(utcDate.getTime() - (timezoneOffset * 60 * 1000));
+    
+    return localDate.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
 
   return (
     <AuthGuard>
@@ -283,7 +322,7 @@ export default function ProjectsPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">Projects</CardTitle>
-                    <Dialog>
+                    <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
                       <DialogTrigger asChild>
                         <Button size="icon" variant="ghost" aria-label="Add Project">
                           <Plus className="h-5 w-5" />
@@ -339,7 +378,7 @@ export default function ProjectsPage() {
                       <h2 className="text-2xl font-semibold text-foreground">{selectedProject.name}</h2>
                     </div>
                     {canCreateTasks && (
-                      <Dialog>
+                      <Dialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen}>
                         <DialogTrigger asChild>
                           <Button>
                             <Plus className="h-4 w-4 mr-2" />
@@ -595,7 +634,7 @@ export default function ProjectsPage() {
                             {activity.message}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {new Date(activity.created_at).toLocaleString()}
+                            {formatLocalTime(activity.created_at)}
                           </p>
                         </div>
                       </div>

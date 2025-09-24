@@ -38,7 +38,11 @@ router.post("/", authenticateToken, async (req, res) => {
     [projectId, title, assigneeValue, statusValue]
   );
 
-  await logActivity(orgId, req.user.userId, `created task '${title}'`);
+  // Get project name for activity logging
+  const projectResult = await pool.query("SELECT name FROM projects WHERE id = $1", [projectId]);
+  const projectName = projectResult.rows[0]?.name || 'Unknown Project';
+
+  await logActivity(orgId, req.user.userId, `created task '${title}' in project '${projectName}'`);
   res.json({ task: result.rows[0] });
 });
 
@@ -69,7 +73,10 @@ router.patch("/:taskId", authenticateToken, async (req, res) => {
     [status, taskId]
   );
 
-  await logActivity(orgId, req.user.userId, `updated task '${task.rows[0].title}' status to '${status}'`);
+  // Get project name for activity logging
+  const projectName = project.rows[0]?.name || 'Unknown Project';
+
+  await logActivity(orgId, req.user.userId, `updated task '${task.rows[0].title}' status to '${status}' in project '${projectName}'`);
 
   res.json({ task: result.rows[0] });
 });
@@ -194,7 +201,11 @@ router.delete("/:id", authenticateToken, async (req, res) => {
     }
 
     await pool.query("DELETE FROM tasks WHERE id=$1", [id]);
-    await logActivity(orgId, userId, `deleted task '${task.rows[0].title}'`);
+    
+    // Get project name for activity logging
+    const projectName = project.rows[0]?.name || 'Unknown Project';
+    
+    await logActivity(orgId, userId, `deleted task '${task.rows[0].title}' from project '${projectName}'`);
 
     res.json({ message: "Task deleted" });
   } catch (err) {

@@ -1,32 +1,24 @@
 import express from "express";
 import pool from "../db.js";
 import { authenticateToken } from "../middleware/auth.js";
+import { requireRole } from "../utils/requireRole.js";
 import { logActivity } from "../utils/logActivity.js";
 
 
 const router = express.Router();
 
-// Create a project within an organization
-router.post("/", authenticateToken, async (req, res) => {
+// Create a project within an organization (Admin only)
+router.post("/", authenticateToken, requireRole("admin"), async (req, res) => {
   const { orgId, name } = req.body;
 
   try {
-    // Check if user is part of the org
-    const membership = await pool.query(
-      "SELECT * FROM user_organizations WHERE user_id=$1 AND org_id=$2",
-      [req.user.userId, orgId]
-    );
-    if (membership.rows.length === 0)
-      return res.status(403).json({ error: "You are not a member of this organization" });
-
-    // Insert project
+    // Insert project (role check already handled by requireRole middleware)
     const result = await pool.query(
       "INSERT INTO projects (org_id, name) VALUES ($1, $2) RETURNING *",
       [orgId, name]
     );
 
     await logActivity(orgId, req.user.userId, `created project '${name}'`);
-
 
     res.json({ project: result.rows[0] });
   } catch (err) {

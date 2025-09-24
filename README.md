@@ -1,6 +1,6 @@
 # Multi-Tenant Task Tracker
 
-A comprehensive task management system built with Next.js (frontend) and Express.js (backend), featuring multi-tenancy, role-based access control, and real-time activity tracking.
+A comprehensive task management system built with Next.js (frontend) and Express.js (backend), featuring multi-tenancy, role-based access control, project-specific activity tracking, and intuitive user experience.
 
 ## How to Run Locally
 
@@ -40,7 +40,10 @@ A comprehensive task management system built with Next.js (frontend) and Express
 
 5. **Start the backend server:**
    ```bash
-   npm run dev 
+   npm run dev  # Development mode with nodemon
+   # or
+   npm start    # Production mode
+   ```
 
    The backend will run on `http://localhost:3000`
 
@@ -54,11 +57,14 @@ A comprehensive task management system built with Next.js (frontend) and Express
 2. **Install dependencies:**
    ```bash
    npm install
-   ```
+   ``
 
 3. **Start the frontend server:**
    ```bash
-   npm run dev
+   npm run dev  # Development mode
+   # or
+   npm run build && npm start  # Production mode
+   ```
 
    The frontend will run on `http://localhost:3001`
 
@@ -136,6 +142,10 @@ app.get('/api/organizations/:orgId/projects', authenticateToken, async (req, res
 ### JWT-Based Authentication Flow
 
 #### 1. **Registration & Login**
+- **Seamless Registration**: Users register and are automatically redirected to login
+- **Secure Login**: JWT tokens issued upon successful authentication
+- **Token Management**: Automatic token storage and API request inclusion
+
 ```javascript
 // Registration
 POST /api/auth/register
@@ -143,6 +153,7 @@ POST /api/auth/register
   "email": "user@example.com",
   "password": "securepassword"
 }
+// Returns: { "user": {...} } → Redirects to login page
 
 // Login
 POST /api/auth/login
@@ -153,18 +164,8 @@ POST /api/auth/login
 // Returns: { "token": "eyJhbGciOiJIUzI1NiIs..." }
 ```
 
-#### 2. **JWT Token Structure**
-```javascript
-// Token payload contains:
-{
-  "userId": 123,
-  "email": "user@example.com",
-  "iat": 1640995200,  // Issued at
-  "exp": 1641081600   // Expires at (24h later)
-}
-```
 
-#### 3. **Token Management (Frontend)**
+#### 2. **Token Management (Frontend)**
 ```javascript
 // Local storage management
 export const saveToken = (token) => {
@@ -182,7 +183,7 @@ if (token) {
 }
 ```
 
-#### 4. **Protected Routes**
+#### 3. **Protected Routes**
 ```javascript
 // Middleware validates JWT on every protected endpoint
 export const authenticateToken = (req, res, next) => {
@@ -208,10 +209,11 @@ export const authenticateToken = (req, res, next) => {
   - Create/delete projects and tasks
   - Manage organization members
   - View all organization data
+  - Update any task status
 - **Member**: Limited permissions
   - View organization projects and tasks
-  - Update and delete only assigned tasks
-  - Cannot create tasks
+  - Update and delete only their assigned tasks
+  - Cannot create projects or tasks
 
 #### 2. **RBAC Implementation**
 ```javascript
@@ -249,15 +251,23 @@ app.patch('/api/tasks/:taskId', authenticateToken, async (req, res) => {
 
 ## Activity Feed System
 
-### Real-Time Activity Tracking
+### Project-Specific Activity Tracking
 
-#### 1. **Activity Logging**
-The system automatically logs all significant actions:
+#### 1. **Enhanced Activity Logging**
+The system automatically logs all significant actions with email addresses and project context:
 ```javascript
-// Centralized activity logger
+// Centralized activity logger with email lookup
 export const logActivity = async (orgId, userId, message) => {
   try {
-    const fullMessage = `User ${userId} ${message}`;
+    // Fetch user's email
+    const userResult = await pool.query(
+      "SELECT email FROM users WHERE id = $1",
+      [userId]
+    );
+    
+    const userEmail = userResult.rows.length > 0 ? userResult.rows[0].email : `User ${userId}`;
+    const fullMessage = `${userEmail} ${message}`;
+    
     await pool.query(
       "INSERT INTO activity (org_id, message) VALUES ($1, $2)",
       [orgId, fullMessage]
@@ -267,40 +277,11 @@ export const logActivity = async (orgId, userId, message) => {
   }
 };
 
-// Usage in endpoints
-await logActivity(orgId, userId, `created task "${taskTitle}"`);
-await logActivity(orgId, userId, `updated task status to "${status}"`);
-await logActivity(orgId, userId, `joined the organization`);
+// Enhanced usage with project context
+await logActivity(orgId, userId, `created task "${taskTitle}" in project "${projectName}"`);
+await logActivity(orgId, userId, `updated task "${taskTitle}" status to "${status}" in project "${projectName}"`);
+await logActivity(orgId, userId, `deleted task "${taskTitle}" from project "${projectName}"`);
 ```
-
-#### 2. **Activity Feed Endpoint**
-```javascript
-GET /api/activity/:orgId
-// Returns recent activities for the organization
-{
-  "activity": [
-    {
-      "id": 1,
-      "org_id": 1,
-      "message": "User 2 created task 'Implement user authentication'",
-      "created_at": "2025-09-24T10:30:00Z"
-    },
-    {
-      "id": 2,
-      "org_id": 1,
-      "message": "User 3 updated task status to 'in-progress'",
-      "created_at": "2025-09-24T10:25:00Z"
-    }
-  ]
-}
-```
-
-#### 3. **Activity Types Tracked**
-- User joins/leaves organization
-- Project creation/deletion
-- Task creation/updates/deletion
-- Task status changes
-- Task assignments
 
 ## Feature Overview
 
@@ -326,12 +307,18 @@ GET /api/activity/:orgId
 - **Task updates**: Admins can update any task, members only their assigned tasks
 - **Priority levels**: Low, medium, high priority tasks
 
-### 5. **UI Features**
-- **Responsive design**: Works on desktop and mobile
-- **Board view**: Kanban-style task boards
-- **List view**: Traditional list view for tasks
-- **Real-time updates**: UI updates after each action
-- **Role-based UI**: Interface adapts based on user permissions
+### 5. **Enhanced UI Features**
+- **Modern React Interface**: Built with Next.js 14 and TypeScript
+- **Controlled Dialog States**: All modals (task/project creation) close automatically after success
+- **Smart Authentication Flow**: Registration redirects to login with success confirmation
+- **Local Time Display**: All timestamps converted to user's local timezone
+- **Email-Based Activity Logging**: Activity feed shows user email addresses
+- **Project-Specific Activities**: Filter activities by individual projects
+- **Responsive Design**: Mobile-first approach with seamless desktop experience
+- **Radix UI Components**: Accessible, customizable component library
+- **Loading States**: Comprehensive loading indicators for all operations
+- **Error Handling**: User-friendly error messages with contextual feedback
+- **Role-Based UI**: Interface adapts based on user permissions
 
 ### 6. **Security Features**
 - **JWT authentication**: Secure token-based auth
@@ -348,8 +335,20 @@ GET /api/activity/:orgId
 ## Tech Stack
 
 ### Backend
-- **Express.js**: REST API server
-- **PostgreSQL**: Database with proper relations
+- **Express.js**: REST API server with comprehensive middleware
+- **PostgreSQL**: Relational database with proper multi-tenant architecture
+- **JWT**: Secure token-based authentication
+- **bcrypt**: Password hashing and security
+- **CORS**: Cross-origin resource sharing configuration
+- **Activity Logging**: Centralized logging system with email-based tracking
+
+### Frontend  
+- **Next.js 14**: React framework with App Router
+- **TypeScript**: Type-safe development environment
+- **Tailwind CSS**: Utility-first styling framework
+- **Radix UI**: Accessible, customizable component library
+- **React Hooks**: Modern state management and lifecycle handling
+- **Responsive Design**: Mobile-first UI approach
 - **JWT**: Authentication tokens
 - **bcrypt**: Password hashing
 - **CORS**: Cross-origin resource sharing
@@ -360,14 +359,3 @@ GET /api/activity/:orgId
 - **Tailwind CSS**: Utility-first styling
 - **Radix UI**: Accessible component primitives
 - **Axios**: HTTP client for API calls
-
-### Database Schema
-```sql
-users → user_organizations ← organizations
-                ↓
-            projects
-                ↓
-            tasks
-                
-organizations → activity
-```

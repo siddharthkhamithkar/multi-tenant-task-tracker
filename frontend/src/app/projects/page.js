@@ -203,6 +203,7 @@ export default function ProjectsPage() {
   const handleCreateProject = async () => {
     if (!newProjectName.trim() || !orgId) return
     setIsCreatingProject(true)
+    setError("") // Clear previous errors
     try {
       await api.post(`/projects`, { orgId: Number(orgId), name: newProjectName })
       setNewProjectName("")
@@ -210,7 +211,11 @@ export default function ProjectsPage() {
       fetchActivities(orgId)
       setIsProjectDialogOpen(false) // Close the dialog after successful creation
     } catch (error) {
-      setError(error.response?.data?.message || "Failed to create project")
+      if (error.response?.status === 403) {
+        setError("Only organization admins can create projects")
+      } else {
+        setError(error.response?.data?.error || "Failed to create project")
+      }
     } finally {
       setIsCreatingProject(false)
     }
@@ -225,6 +230,7 @@ export default function ProjectsPage() {
   }
 
   const canCreateTasks = user && organization && (user.role === "admin" || organization.userRole === "admin")
+  const canCreateProjects = user && organization && (user.role === "admin" || organization.userRole === "admin")
   const canUpdateTasks = (task) => {
     if (!user) return false
     if (user.role === "admin" || organization?.userRole === "admin") return true
@@ -322,26 +328,28 @@ export default function ProjectsPage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">Projects</CardTitle>
-                    <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button size="icon" variant="ghost" aria-label="Add Project">
-                          <Plus className="h-5 w-5" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Create New Project</DialogTitle>
-                          <DialogDescription>Add a new project to this organization.</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <Label htmlFor="projectName">Project Name</Label>
-                          <Input id="projectName" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="Enter project name" />
-                          <Button onClick={handleCreateProject} disabled={!newProjectName.trim() || isCreatingProject} className="w-full">
-                            {isCreatingProject ? "Creating..." : "Create Project"}
+                    {canCreateProjects && (
+                      <Dialog open={isProjectDialogOpen} onOpenChange={setIsProjectDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="icon" variant="ghost" aria-label="Add Project">
+                            <Plus className="h-5 w-5" />
                           </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Create New Project</DialogTitle>
+                            <DialogDescription>Add a new project to this organization.</DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <Label htmlFor="projectName">Project Name</Label>
+                            <Input id="projectName" value={newProjectName} onChange={e => setNewProjectName(e.target.value)} placeholder="Enter project name" />
+                            <Button onClick={handleCreateProject} disabled={!newProjectName.trim() || isCreatingProject} className="w-full">
+                              {isCreatingProject ? "Creating..." : "Create Project"}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    )}
                   </div>
                   <CardDescription>Select a project to view tasks</CardDescription>
                 </CardHeader>

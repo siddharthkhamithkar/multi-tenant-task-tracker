@@ -8,6 +8,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import DatePicker from 'react-datepicker';
+import { Trash2 } from "lucide-react";
+import 'react-datepicker/dist/react-datepicker.css';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +39,7 @@ const statusIcons = {
   completed: CheckCircle2,
 }
 
+
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([])
   const [newProjectName, setNewProjectName] = useState("")
@@ -46,6 +50,7 @@ export default function ProjectsPage() {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
+  const [selectedDate, setSelectedDate] = useState(null);
   const [newTask, setNewTask] = useState({
     title: "",
     assignedTo: "",
@@ -424,21 +429,16 @@ export default function ProjectsPage() {
                               </Select>
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="priority">Priority</Label>
-                              <Select
-                                value={newTask.priority}
-                                onValueChange={(value) => setNewTask((prev) => ({ ...prev, priority: value }))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="low">Low</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="high">High</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
+                              <Label htmlFor="Due Date">Due Date</Label>
+                                <DatePicker
+                                id="Due Date"
+                                selected={selectedDate}
+                                onChange={(date) => setSelectedDate(date)}
+                                dateFormat="dd-MMM-yy"
+                                placeholderText="Choose a date"
+                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                />
+                              </div>
                             <Button
                               onClick={handleCreateTask}
                               disabled={!newTask.title.trim() || isCreatingTask}
@@ -486,9 +486,6 @@ export default function ProjectsPage() {
                                             {task.assignedToName || "Unassigned"}
                                           </span>
                                         </div>
-                                        <Badge variant="outline" className="text-xs">
-                                          {task.priority}
-                                        </Badge>
                                       </div>
                                       {canUpdateTasks(task) && (
                                         <div className="flex gap-2 items-center">
@@ -506,7 +503,7 @@ export default function ProjectsPage() {
                                             </SelectContent>
                                           </Select>
                                           <Button variant="destructive" size="sm" onClick={() => handleDeleteTask(task.id)}>
-                                            Delete
+                                              <Trash2 className="h-4 w-4" />
                                           </Button>
                                         </div>
                                       )}
